@@ -1,0 +1,165 @@
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using Flames.Models;
+using Flames.Utils;
+
+namespace Flames.Render;
+
+public class MultiThreadedFlameRenderer
+{
+    private readonly FlameConfig config;
+    
+    public MultiThreadedFlameRenderer(FlameConfig cfg)
+    {
+        config = cfg;
+    }
+
+    /// <summary>
+    /// Генерирует изображение фрактального пламени многопоточно
+    /// </summary>
+    public byte[] Render()
+    {
+        int w = config.Width, h = config.Height, n = config.IterationCount;
+        int threads = Math.Max(1, config.Threads);
+        double xmin = -4.0, xmax = 4.0, ymin = -4.0, ymax = 4.0;
+
+        // Подготовка весов для функций
+        var weights = new List<double>();
+        double sum = 0;
+        foreach (var f in config.Functions) { sum += f.Weight; weights.Add(sum); }
+
+        // Общий буфер для результата
+        var globalBuf = new double[w * h * 3];
+        var lockObj = new object();
+        int completed = 0;
+
+        // Разделяем работу между потоками
+        int iterationsPerThread = n / threads;
+        int remainder = n % threads;
+
+        Logger.Info($"Starting multithreaded generation with {threads} threads");
+
+        var tasks = new Task[threads];
+        for (int t = 0; t < threads; t++)
+        {
+            int threadId = t;
+            int startIter = t * iterationsPerThread;
+            int endIter = startIter + iterationsPerThread + (threadId == threads - 1 ? remainder : 0);
+            int seed = (int)(config.Seed + threadId);
+
+            tasks[t] = Task.Run(() =>
+            {
+                var localBuf = new double[w * h * 3];
+                var localRand = new Random(seed);
+                double x = 0, y = 0;
+
+                for (int i = startIter; i < endIter; i++)
+                {
+                    int idx = PickFunction(weights, sum, localRand);
+                    int affIdx = localRand.Next(config.AffineParams.Count);
+                    var aff = config.AffineParams[affIdx];
+                    (x, y) = ApplyAffine(x, y, aff);
+                    (x, y) = ApplyTransform(x, y, config.Functions[idx].Name);
+
+                    if (double.IsNaN(x) || double.IsInfinity(x) || double.IsNaN(y) || double.IsInfinity(y))
+                    {
+                        x = 0; y = 0;
+                        continue;
+                    }
+
+                    x = Math.Max(-10, Math.Min(10, x));
+                    y = Math.Max(-10, Math.Min(10, y));
+
+                    int px = (int)((x - xmin) / (xmax - xmin) * (w - 1));
+                    int py = (int)((ymax - y) / (ymax - ymin) * (h - 1));
+                    if (px >= 0 && px < w && py >= 0 && py < h)
+                    {
+                        var color = FunctionColor(idx, config.Functions.Count);
+                        int idxBuf = (py * w + px) * 3;
+                        localBuf[idxBuf + 0] += color.r;
+                        localBuf[idxBuf + 1] += color.g;
+                        localBuf[idxBuf + 2] += color.b;
+                    }
+
+                    if ((i - startIter + 1) % Math.Max(1, (endIter - startIter) / 20) == 0)
+                    {
+                        int current = Interlocked.Increment(ref completed);
+                        if (current % (n / 100) == 0)
+                            Logger.Progress(current, n);
+                    }
+                }
+
+                // Объединяем локальный буфер с глобальным
+                lock (lockObj)
+                {
+                    for (int i = 0; i < localBuf.Length; i++)
+                        globalBuf[i] += localBuf[i];
+                }
+            });
+        }
+
+        Task.WaitAll(tasks);
+        Logger.Progress(n, n);
+        Console.WriteLine();
+        Logger.Info($"Multithreaded generation completed");
+
+        return NormalizeToRgb(globalBuf, w, h);
+    }
+
+    private int PickFunction(List<double> acc, double sum, Random rand)
+    {
+        double r = rand.NextDouble() * sum;
+        for (int i = 0; i < acc.Count; i++)
+            if (r < acc[i]) return i;
+        return acc.Count - 1;
+    }
+
+    private (double, double) ApplyAffine(double x, double y, AffineParams t)
+        => (t.A * x + t.B * y + t.C, t.D * x + t.E * y + t.F);
+
+    private (double, double) ApplyTransform(double x, double y, string name)
+        => name.ToLower() switch
+        {
+            "linear" => FlameTransforms.Linear(x, y),
+            "swirl" => FlameTransforms.Swirl(x, y),
+            "horseshoe" => FlameTransforms.Horseshoe(x, y),
+            "spherical" => FlameTransforms.Spherical(x, y),
+            "sinusoidal" => FlameTransforms.Sinusoidal(x, y),
+            "polar" => FlameTransforms.Polar(x, y),
+            _ => FlameTransforms.Linear(x, y)
+        };
+
+    private (double r, double g, double b) FunctionColor(int i, int total)
+    {
+        double hue = (double)i / total * 6.0;
+        int sector = (int)hue;
+        double frac = hue - sector;
+        return sector switch
+        {
+            0 => (1.0, frac, 0.0),
+            1 => (1.0 - frac, 1.0, 0.0),
+            2 => (0.0, 1.0, frac),
+            3 => (0.0, 1.0 - frac, 1.0),
+            4 => (frac, 0.0, 1.0),
+            _ => (1.0, 0.0, 1.0 - frac)
+        };
+    }
+
+    private byte[] NormalizeToRgb(double[] buf, int w, int h)
+    {
+        double max = 1;
+        foreach (var c in buf) if (c > max) max = c;
+
+        double logMax = Math.Log(max + 1);
+        var arr = new byte[w * h * 3];
+        for (int i = 0; i < buf.Length; i++)
+        {
+            double normalized = Math.Log(buf[i] + 1) / logMax;
+            arr[i] = (byte)Math.Min(255, (int)(normalized * 255));
+        }
+        return arr;
+    }
+}
+

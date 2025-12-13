@@ -60,11 +60,22 @@ public static class Program
                 {
                     var config = LoadConfig(width, height, seed, iterationCount, threads, output, affineParams, functions, configPath, gammaCorrection, gamma, symmetryLevel);
                     ValidateConfig(config);
-                    Logger.Info($"Параметры загружены. width={config.Width}, height={config.Height}, iters={config.IterationCount}");
-                    var renderer = new FlameRenderer(config);
-                    var rgb = renderer.Render();
+                    Logger.Info($"Parameters loaded. width={config.Width}, height={config.Height}, iters={config.IterationCount}, threads={config.Threads}");
+                    
+                    byte[] rgb;
+                    if (config.Threads > 1)
+                    {
+                        var multiRenderer = new MultiThreadedFlameRenderer(config);
+                        rgb = multiRenderer.Render();
+                    }
+                    else
+                    {
+                        var renderer = new FlameRenderer(config);
+                        rgb = renderer.Render();
+                    }
+                    
                     PngWriter.SaveRgbImage(config.OutputPath, config.Width, config.Height, rgb);
-                    Logger.Info($"PNG сохранён в {config.OutputPath}");
+                    Logger.Info($"PNG saved to {config.OutputPath}");
                 } catch (Exception ex) { Logger.Error(ex.Message); }
             });
             return rootCommand.Invoke(args);
