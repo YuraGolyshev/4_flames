@@ -1,55 +1,13 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using System.CommandLine;
-using System.CommandLine.Invocation;
-using System.Reflection;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Globalization;
+using Flames.Models;
+using Flames.Render;
+using Flames.Utils;
 
 namespace Flames;
-
-// Структура для аффинных преобразований
-public record AffineParams(
-    [property: JsonPropertyName("a")] double A,
-    [property: JsonPropertyName("b")] double B,
-    [property: JsonPropertyName("c")] double C,
-    [property: JsonPropertyName("d")] double D,
-    [property: JsonPropertyName("e")] double E,
-    [property: JsonPropertyName("f")] double F
-);
-
-// Структура для описания используемой функции
-public record TransformationFunction(
-    [property: JsonPropertyName("name")] string Name,
-    [property: JsonPropertyName("weight")] double Weight
-);
-
-// Главная модель конфигурации задачи
-public class FlameConfig
-{
-    [JsonPropertyName("width")]
-    public int Width { get; set; } = 1920;
-    [JsonPropertyName("height")]
-    public int Height { get; set; } = 1080;
-    [JsonPropertyName("seed")]
-    public double Seed { get; set; } = 5;
-    [JsonPropertyName("iteration_count")]
-    public int IterationCount { get; set; } = 2500;
-    [JsonPropertyName("output_path")]
-    public string OutputPath { get; set; } = "result.png";
-    [JsonPropertyName("threads")]
-    public int Threads { get; set; } = 1;
-    [JsonPropertyName("affine_params")]
-    public List<AffineParams> AffineParams { get; set; } = new();
-    [JsonPropertyName("functions")]
-    public List<TransformationFunction> Functions { get; set; } = new();
-    [JsonPropertyName("gamma_correction")]
-    public bool GammaCorrection { get; set; } = false;
-    [JsonPropertyName("gamma")]
-    public double Gamma { get; set; } = 2.2;
-    [JsonPropertyName("symmetry_level")]
-    public int SymmetryLevel { get; set; } = 1;
-}
 
 public static class Program
 {
@@ -98,23 +56,26 @@ public static class Program
                 bool gammaCorrection = context.ParseResult.GetValueForOption(gammaCorrOption);
                 double gamma = context.ParseResult.GetValueForOption(gammaOption);
                 int symmetryLevel = context.ParseResult.GetValueForOption(symmetryOption);
-
-                var config = LoadConfig(width, height, seed, iterationCount, threads, output, affineParams, functions, configPath, gammaCorrection, gamma, symmetryLevel);
-                ValidateConfig(config);
-                Console.WriteLine($"Параметры загрузились успешно: W={config.Width}, H={config.Height}, Threads={config.Threads}");
+                try
+                {
+                    var config = LoadConfig(width, height, seed, iterationCount, threads, output, affineParams, functions, configPath, gammaCorrection, gamma, symmetryLevel);
+                    ValidateConfig(config);
+                    Logger.Info($"Параметры загружены. width={config.Width}, height={config.Height}, iters={config.IterationCount}");
+                    var renderer = new FlameRenderer(config);
+                    var rgb = renderer.Render();
+                    PngWriter.SaveRgbImage(config.OutputPath, config.Width, config.Height, rgb);
+                    Logger.Info($"PNG сохранён в {config.OutputPath}");
+                } catch (Exception ex) { Logger.Error(ex.Message); }
             });
-
             return rootCommand.Invoke(args);
         }
         catch (Exception ex)
         {
-            LogError(ex);
+            Logger.Error(ex.Message+"\n"+ex.StackTrace);
             return 1;
         }
     }
-
-    // Чтение параметров из CLI/JSON/дефолтов с нужным приоритетом
-    private static FlameConfig LoadConfig(int width, int height, double seed, int iter, int threads, string output, string affStr, string funStr, string configPath, bool gammaCorr, double gamma, int symmetry)
+    public static FlameConfig LoadConfig(int width, int height, double seed, int iter, int threads, string output, string affStr, string funStr, string configPath, bool gammaCorr, double gamma, int symmetry)
     {
         FlameConfig config = new FlameConfig();
         if (!string.IsNullOrWhiteSpace(configPath) && File.Exists(configPath))
@@ -122,7 +83,7 @@ public static class Program
             var fileJson = File.ReadAllText(configPath);
             config = JsonSerializer.Deserialize<FlameConfig>(fileJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
         }
-        // CLI параметры имеют приоритет
+        // CLI > JSON > дефолты
         config.Width = width;
         config.Height = height;
         config.Seed = seed;
@@ -138,7 +99,6 @@ public static class Program
             config.Functions = ParseFunctions(funStr);
         return config;
     }
-    // Парсинг строки аффинных преобразований
     public static List<AffineParams> ParseAffineParams(string s)
     {
         var list = new List<AffineParams>();
@@ -158,7 +118,6 @@ public static class Program
         }
         return list;
     }
-    // Парсинг строки с функциями
     public static List<TransformationFunction> ParseFunctions(string s)
     {
         var res = new List<TransformationFunction>();
@@ -171,7 +130,6 @@ public static class Program
         }
         return res;
     }
-    // Простая валидация параметров
     public static void ValidateConfig(FlameConfig conf)
     {
         if (conf.Width <= 0 || conf.Height <= 0) throw new ArgumentException("Размер изображения должен быть больше 0");
@@ -180,10 +138,5 @@ public static class Program
         if (conf.SymmetryLevel < 1) throw new ArgumentException("SymmetryLevel >= 1");
         if (conf.Functions.Count == 0) throw new ArgumentException("Должна быть указана хотя бы одна функция трансформации");
         if (conf.AffineParams.Count == 0) throw new ArgumentException("Должна быть указана хотя бы одна аффинная матрица");
-    }
-    // Логирование ошибок
-    public static void LogError(Exception ex)
-    {
-        Console.Error.WriteLine($"[Ошибка]: {ex.Message}\nСтек: {ex.StackTrace}");
     }
 }
