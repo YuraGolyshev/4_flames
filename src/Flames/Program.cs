@@ -9,8 +9,12 @@ using Flames.Utils;
 
 namespace Flames;
 
+/// <summary>
+/// Входная точка и парсер параметров генератора фрактальных пламён
+/// </summary>
 public static class Program
 {
+    /// <summary>Главная точка входа. Парсит параметры CLI/JSON, управляет рендером и PNG-выходом.</summary>
     public static int Main(string[] args)
     {
         try
@@ -86,6 +90,9 @@ public static class Program
             return 1;
         }
     }
+    /// <summary>
+    /// Собирает итоговый конфиг из параметров CLI, JSON или дефолтов
+    /// </summary>
     public static FlameConfig LoadConfig(int width, int height, double seed, int iter, int threads, string output, string affStr, string funStr, string configPath, bool gammaCorr, double gamma, int symmetry)
     {
         FlameConfig config = new FlameConfig();
@@ -110,6 +117,7 @@ public static class Program
             config.Functions = ParseFunctions(funStr);
         return config;
     }
+    /// <summary>Парсит строку с affine-параметрами (по 6 чисел через /)</summary>
     public static List<AffineParams> ParseAffineParams(string s)
     {
         var list = new List<AffineParams>();
@@ -129,6 +137,7 @@ public static class Program
         }
         return list;
     }
+    /// <summary>Парсит функции трансформации вида "name:weight,name:weight..."</summary>
     public static List<TransformationFunction> ParseFunctions(string s)
     {
         var res = new List<TransformationFunction>();
@@ -141,6 +150,7 @@ public static class Program
         }
         return res;
     }
+    /// <summary>Проверяет консистентность/валидность всех параметров.</summary>
     public static void ValidateConfig(FlameConfig conf)
     {
         if (conf.Width <= 0 || conf.Height <= 0) throw new ArgumentException("Размер изображения должен быть больше 0");

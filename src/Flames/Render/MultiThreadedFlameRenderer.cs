@@ -7,6 +7,9 @@ using Flames.Utils;
 
 namespace Flames.Render;
 
+/// <summary>
+/// Многопоточный рендерер фрактального пламени, равномерно делит работу между потоками
+/// </summary>
 public class MultiThreadedFlameRenderer
 {
     private readonly FlameConfig config;
@@ -17,7 +20,7 @@ public class MultiThreadedFlameRenderer
     }
 
     /// <summary>
-    /// Генерирует изображение фрактального пламени многопоточно
+    /// Генерирует финальное RGB-изображение с использованием N потоков.
     /// </summary>
     public byte[] Render()
     {

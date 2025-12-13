@@ -5,6 +5,9 @@ using Flames.Utils;
 
 namespace Flames.Render;
 
+/// <summary>
+/// Основной однопоточный движок генерации фрактального пламени (chaos game + nonlinear transforms)
+/// </summary>
 public class FlameRenderer
 {
     private readonly FlameConfig config;
@@ -16,7 +19,7 @@ public class FlameRenderer
     }
 
     /// <summary>
-    /// Генерирует изображение фрактального пламени в byte[] RGB (row-major, 8 бит/канал)
+    /// Генерирует финальное RGB-изображение в виде byte[] по config.
     /// </summary>
     public byte[] Render()
     {
