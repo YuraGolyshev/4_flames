@@ -22,7 +22,8 @@ public class FlameRenderer
     {
         int w = config.Width, h = config.Height, n = config.IterationCount;
         var buf = new double[w * h * 3]; // Для накопления цвета
-        double xmin=-1.5, xmax=1.5, ymin=-1.0, ymax=1.0;
+        // Расширенный диапазон координат для лучшего заполнения (адаптивный)
+        double xmin=-4.0, xmax=4.0, ymin=-4.0, ymax=4.0;
 
         // Сгенерируем кумулятивный массив весов для трансформаций
         var weights = new List<double>();
@@ -34,9 +35,21 @@ public class FlameRenderer
         {
             // Выбор функции по весам
             int idx = PickFunction(weights, sum);
-            var aff = config.AffineParams[idx % config.AffineParams.Count];
+            // Выбираем случайное аффинное преобразование (независимо от функции)
+            int affIdx = rand.Next(config.AffineParams.Count);
+            var aff = config.AffineParams[affIdx];
             (x, y) = ApplyAffine(x, y, aff);
             (x, y) = ApplyTransform(x, y, config.Functions[idx].Name);
+            
+            // Защита от NaN и Infinity
+            if (double.IsNaN(x) || double.IsInfinity(x) || double.IsNaN(y) || double.IsInfinity(y))
+            {
+                x = 0; y = 0;
+                continue;
+            }
+            // Ограничиваем координаты разумными пределами
+            x = Math.Max(-10, Math.Min(10, x));
+            y = Math.Max(-10, Math.Min(10, y));
 
             // Приводим к экрану
             int px = (int)((x - xmin) / (xmax - xmin) * (w - 1));
@@ -69,28 +82,47 @@ public class FlameRenderer
         => (t.A * x + t.B * y + t.C, t.D * x + t.E * y + t.F);
 
     private (double, double) ApplyTransform(double x, double y, string name)
-    {
-        // (Сделаем только linear для второго этапа, остальные трансформации позже.)
-        return name switch {
-            "linear" => (x, y),
-            // для следующих этапов -- "swirl", "horseshoe" и т.д.
-            _ => (x, y)
+        => name.ToLower() switch
+        {
+            "linear"      => FlameTransforms.Linear(x, y),
+            "swirl"       => FlameTransforms.Swirl(x, y),
+            "horseshoe"   => FlameTransforms.Horseshoe(x, y),
+            "spherical"   => FlameTransforms.Spherical(x, y),
+            "sinusoidal"  => FlameTransforms.Sinusoidal(x, y),
+            "polar"       => FlameTransforms.Polar(x, y),
+            _ => FlameTransforms.Linear(x, y)
         };
-    }
+
     private (double r, double g, double b) FunctionColor(int i, int total)
     {
-        // Простой градиент по id: от красного к синему
-        double t = (double)i/(total-1);
-        return (1.0-t, 0.5*t, t); // R-G-B градиент
+        // Яркие насыщенные цвета для каждой функции - полный спектр радуги
+        double hue = (double)i / total * 6.0; // 0-6 для полного спектра
+        int sector = (int)hue;
+        double frac = hue - sector;
+        return sector switch
+        {
+            0 => (1.0, frac, 0.0),           // Красный -> Жёлтый
+            1 => (1.0 - frac, 1.0, 0.0),     // Жёлтый -> Зелёный
+            2 => (0.0, 1.0, frac),            // Зелёный -> Голубой
+            3 => (0.0, 1.0 - frac, 1.0),      // Голубой -> Синий
+            4 => (frac, 0.0, 1.0),            // Синий -> Фиолетовый
+            _ => (1.0, 0.0, 1.0 - frac)       // Фиолетовый -> Красный
+        };
     }
     private byte[] NormalizeToRgb(double[] buf, int w, int h)
     {
-        // Скалируем так, чтобы максимальный канал был 255
+        // Находим максимум
         double max = 1;
         foreach(var c in buf) if(c>max) max=c;
+        
+        // Логарифмическая нормализация для лучшего контраста и яркости
+        double logMax = Math.Log(max + 1);
         var arr = new byte[w*h*3];
         for (int i=0;i<buf.Length;i++)
-            arr[i]=(byte)Math.Min(255,(int)(buf[i]/max*255));
+        {
+            double normalized = Math.Log(buf[i] + 1) / logMax;
+            arr[i] = (byte)Math.Min(255, (int)(normalized * 255));
+        }
         return arr;
     }
 }

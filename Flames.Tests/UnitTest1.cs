@@ -1,4 +1,5 @@
 using Flames;
+using Flames.Models;
 using Xunit;
 
 namespace Flames.Tests;
