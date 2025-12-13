@@ -51,17 +51,25 @@ public class FlameRenderer
             x = Math.Max(-10, Math.Min(10, x));
             y = Math.Max(-10, Math.Min(10, y));
 
-            // Приводим к экрану
-            int px = (int)((x - xmin) / (xmax - xmin) * (w - 1));
-            int py = (int)((ymax - y) / (ymax - ymin) * (h - 1)); // важен ymax - y, иначе перевёрнуто
-            if (px >= 0 && px < w && py >= 0 && py < h)
+            int symLevels = Math.Max(1, config.SymmetryLevel);
+            for (int s = 0; s < symLevels; s++)
             {
-                // Цвет: индекс функции задаёт градиент (можно усложнить до colormap)
-                var color = FunctionColor(idx, config.Functions.Count);
-                int idxBuf = (py * w + px) * 3;
-                buf[idxBuf + 0] += color.r;
-                buf[idxBuf + 1] += color.g;
-                buf[idxBuf + 2] += color.b;
+                double angle = 2 * Math.PI * s / symLevels;
+                double xx = x * Math.Cos(angle) - y * Math.Sin(angle);
+                double yy = x * Math.Sin(angle) + y * Math.Cos(angle);
+
+                // Приводим к экрану
+                int px = (int)((xx - xmin) / (xmax - xmin) * (w - 1));
+                int py = (int)((ymax - yy) / (ymax - ymin) * (h - 1)); // важен ymax - y, иначе перевёрнуто
+                if (px >= 0 && px < w && py >= 0 && py < h)
+                {
+                    // Цвет: индекс функции задаёт градиент (можно усложнить до colormap)
+                    var color = FunctionColor(idx, config.Functions.Count);
+                    int idxBuf = (py * w + px) * 3;
+                    buf[idxBuf + 0] += color.r;
+                    buf[idxBuf + 1] += color.g;
+                    buf[idxBuf + 2] += color.b;
+                }
             }
             if ((i+1) % Math.Max(1, n/100) == 0) Logger.Progress(i+1, n);
         }
@@ -111,16 +119,18 @@ public class FlameRenderer
     }
     private byte[] NormalizeToRgb(double[] buf, int w, int h)
     {
-        // Находим максимум
         double max = 1;
         foreach(var c in buf) if(c>max) max=c;
-        
-        // Логарифмическая нормализация для лучшего контраста и яркости
         double logMax = Math.Log(max + 1);
-        var arr = new byte[w*h*3];
-        for (int i=0;i<buf.Length;i++)
+        var arr = new byte[w * h * 3];
+        for (int i = 0; i < buf.Length; i++)
         {
             double normalized = Math.Log(buf[i] + 1) / logMax;
+            if (config.GammaCorrection)
+            {
+                double gamma = config.Gamma > 0 ? config.Gamma : 2.2;
+                normalized = Math.Pow(normalized, 1.0 / gamma);
+            }
             arr[i] = (byte)Math.Min(255, (int)(normalized * 255));
         }
         return arr;

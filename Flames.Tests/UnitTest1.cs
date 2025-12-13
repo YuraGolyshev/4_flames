@@ -91,5 +91,74 @@ public class ConfigTests
         bad.Threads = 1; bad.SymmetryLevel = 0;
         Assert.Throws<ArgumentException>(() => Program.ValidateConfig(bad));
     }
+
+    [Fact]
+    public void Render_With_SymmetryLevel_MakesImageDifferent()
+    {
+        var config1 = new FlameConfig
+        {
+            Width = 140,
+            Height = 140,
+            IterationCount = 180_000,
+            Threads = 1,
+            Seed = 8,
+            Functions = new() { new TransformationFunction("swirl", 1) },
+            // affine с сдвигом
+            AffineParams = new() { new AffineParams(0.8,0,0.4,0,0.8,0.2) },
+            SymmetryLevel = 1,
+            GammaCorrection = false
+        };
+        var config4 = new FlameConfig
+        {
+            Width = config1.Width,
+            Height = config1.Height,
+            IterationCount = config1.IterationCount,
+            Threads = config1.Threads,
+            Seed = config1.Seed,
+            Functions = config1.Functions,
+            AffineParams = config1.AffineParams,
+            SymmetryLevel = 6, // для наглядности
+            GammaCorrection = false
+        };
+        var pixels1 = new Flames.Render.FlameRenderer(config1).Render();
+        var pixels4 = new Flames.Render.FlameRenderer(config4).Render();
+        // хотя бы один пиксель не ноль
+        Assert.Contains(pixels1, v => v != 0);
+        Assert.Contains(pixels4, v => v != 0);
+        // изображения различаются
+        Assert.NotEqual(pixels1, pixels4);
+    }
+
+    [Fact]
+    public void Render_With_GammaCorrection_ChangesBrightness()
+    {
+        var baseConfig = new FlameConfig
+        {
+            Width = 140, Height = 140, IterationCount = 200_000, Threads = 1, Seed = 11,
+            Functions = new() { new TransformationFunction("swirl", 1) },
+            AffineParams = new() { new AffineParams(0.8, 0, 1.2, 0, 0.8, 2.2), new AffineParams(1.2,0,3.4,0,1.2,1.0) },
+            SymmetryLevel = 1,
+            GammaCorrection = false,
+            Gamma = 2.2
+        };
+        var gammaConfig = new FlameConfig
+        {
+            Width = baseConfig.Width,
+            Height = baseConfig.Height,
+            IterationCount = baseConfig.IterationCount,
+            Threads = baseConfig.Threads,
+            Seed = baseConfig.Seed,
+            Functions = baseConfig.Functions,
+            AffineParams = baseConfig.AffineParams,
+            SymmetryLevel = baseConfig.SymmetryLevel,
+            GammaCorrection = true,
+            Gamma = 0.7
+        };
+        var img1 = new Flames.Render.FlameRenderer(baseConfig).Render();
+        var img2 = new Flames.Render.FlameRenderer(gammaConfig).Render();
+        Assert.Contains(img1, v => v != 0);
+        Assert.Contains(img2, v => v != 0);
+        Assert.NotEqual(img1, img2);
+    }
 }
 

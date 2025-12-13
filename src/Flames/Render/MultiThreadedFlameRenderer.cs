@@ -68,26 +68,32 @@ public class MultiThreadedFlameRenderer
                         x = 0; y = 0;
                         continue;
                     }
-
                     x = Math.Max(-10, Math.Min(10, x));
                     y = Math.Max(-10, Math.Min(10, y));
 
-                    int px = (int)((x - xmin) / (xmax - xmin) * (w - 1));
-                    int py = (int)((ymax - y) / (ymax - ymin) * (h - 1));
-                    if (px >= 0 && px < w && py >= 0 && py < h)
+                    int symLevels = Math.Max(1, config.SymmetryLevel);
+                    for (int s = 0; s < symLevels; s++)
                     {
-                        var color = FunctionColor(idx, config.Functions.Count);
-                        int idxBuf = (py * w + px) * 3;
-                        localBuf[idxBuf + 0] += color.r;
-                        localBuf[idxBuf + 1] += color.g;
-                        localBuf[idxBuf + 2] += color.b;
+                        double angle = 2 * Math.PI * s / symLevels;
+                        double xx = x * Math.Cos(angle) - y * Math.Sin(angle);
+                        double yy = x * Math.Sin(angle) + y * Math.Cos(angle);
+
+                        int px = (int)((xx - xmin) / (xmax - xmin) * (w - 1));
+                        int py = (int)((ymax - yy) / (ymax - ymin) * (h - 1));
+                        if (px >= 0 && px < w && py >= 0 && py < h)
+                        {
+                            var color = FunctionColor(idx, config.Functions.Count);
+                            int idxBuf = (py * w + px) * 3;
+                            localBuf[idxBuf + 0] += color.r;
+                            localBuf[idxBuf + 1] += color.g;
+                            localBuf[idxBuf + 2] += color.b;
+                        }
                     }
 
                     if ((i - startIter + 1) % Math.Max(1, (endIter - startIter) / 20) == 0)
                     {
                         int current = Interlocked.Increment(ref completed);
-                        if (current % (n / 100) == 0)
-                            Logger.Progress(current, n);
+                        if (current % (n / 100) == 0) Logger.Progress(current, n);
                     }
                 }
 
@@ -157,6 +163,11 @@ public class MultiThreadedFlameRenderer
         for (int i = 0; i < buf.Length; i++)
         {
             double normalized = Math.Log(buf[i] + 1) / logMax;
+            if (config.GammaCorrection)
+            {
+                double gamma = config.Gamma > 0 ? config.Gamma : 2.2;
+                normalized = Math.Pow(normalized, 1.0 / gamma);
+            }
             arr[i] = (byte)Math.Min(255, (int)(normalized * 255));
         }
         return arr;
