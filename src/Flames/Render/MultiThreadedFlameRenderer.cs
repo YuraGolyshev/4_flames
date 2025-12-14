@@ -13,7 +13,7 @@ namespace Flames.Render;
 public class MultiThreadedFlameRenderer
 {
     private readonly FlameConfig config;
-    
+
     public MultiThreadedFlameRenderer(FlameConfig cfg)
     {
         config = cfg;
@@ -96,7 +96,8 @@ public class MultiThreadedFlameRenderer
                     if ((i - startIter + 1) % Math.Max(1, (endIter - startIter) / 20) == 0)
                     {
                         int current = Interlocked.Increment(ref completed);
-                        if (current % (n / 100) == 0) {
+                        if (current % (n / 100) == 0)
+                        {
                             Logger.Progress(current, n);
                         }
                     }
@@ -126,7 +127,8 @@ public class MultiThreadedFlameRenderer
         double r = rand.NextDouble() * sum;
         for (int i = 0; i < acc.Count; i++)
         {
-            if (r < acc[i]) {
+            if (r < acc[i])
+            {
                 return i;
             }
         }
@@ -170,7 +172,8 @@ public class MultiThreadedFlameRenderer
         double max = 1;
         foreach (var c in buf)
         {
-            if (c > max) {
+            if (c > max)
+            {
                 max = c;
             }
         }

@@ -26,7 +26,7 @@ public class FlameRenderer
         int w = config.Width, h = config.Height, n = config.IterationCount;
         var buf = new double[w * h * 3]; // Для накопления цвета
         // Расширенный диапазон координат для лучшего заполнения (адаптивный)
-        double xmin=-4.0, xmax=4.0, ymin=-4.0, ymax=4.0;
+        double xmin = -4.0, xmax = 4.0, ymin = -4.0, ymax = 4.0;
 
         // Сгенерируем кумулятивный массив весов для трансформаций
         var weights = new List<double>();
@@ -43,7 +43,7 @@ public class FlameRenderer
             var aff = config.AffineParams[affIdx];
             (x, y) = ApplyAffine(x, y, aff);
             (x, y) = ApplyTransform(x, y, config.Functions[idx].Name);
-            
+
             // Защита от NaN и Infinity
             if (double.IsNaN(x) || double.IsInfinity(x) || double.IsNaN(y) || double.IsInfinity(y))
             {
@@ -74,9 +74,9 @@ public class FlameRenderer
                     buf[idxBuf + 2] += color.b;
                 }
             }
-            if ((i+1) % Math.Max(1, n/100) == 0)
+            if ((i + 1) % Math.Max(1, n / 100) == 0)
             {
-                Logger.Progress(i+1, n);
+                Logger.Progress(i + 1, n);
             }
         }
         Logger.Progress(n, n); Console.WriteLine();
@@ -95,7 +95,7 @@ public class FlameRenderer
             }
         }
 
-        return acc.Count-1;
+        return acc.Count - 1;
     }
 
     private (double, double) ApplyAffine(double x, double y, AffineParams t)
@@ -104,12 +104,12 @@ public class FlameRenderer
     private (double, double) ApplyTransform(double x, double y, string name)
         => name.ToLower() switch
         {
-            "linear"      => FlameTransforms.Linear(x, y),
-            "swirl"       => FlameTransforms.Swirl(x, y),
-            "horseshoe"   => FlameTransforms.Horseshoe(x, y),
-            "spherical"   => FlameTransforms.Spherical(x, y),
-            "sinusoidal"  => FlameTransforms.Sinusoidal(x, y),
-            "polar"       => FlameTransforms.Polar(x, y),
+            "linear" => FlameTransforms.Linear(x, y),
+            "swirl" => FlameTransforms.Swirl(x, y),
+            "horseshoe" => FlameTransforms.Horseshoe(x, y),
+            "spherical" => FlameTransforms.Spherical(x, y),
+            "sinusoidal" => FlameTransforms.Sinusoidal(x, y),
+            "polar" => FlameTransforms.Polar(x, y),
             _ => FlameTransforms.Linear(x, y)
         };
 

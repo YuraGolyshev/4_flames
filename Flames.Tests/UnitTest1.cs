@@ -104,7 +104,7 @@ public class ConfigTests
             Seed = 8,
             Functions = new() { new TransformationFunction("swirl", 1) },
             // affine с сдвигом
-            AffineParams = new() { new AffineParams(0.8,0,0.4,0,0.8,0.2) },
+            AffineParams = new() { new AffineParams(0.8, 0, 0.4, 0, 0.8, 0.2) },
             SymmetryLevel = 1,
             GammaCorrection = false
         };
@@ -134,9 +134,13 @@ public class ConfigTests
     {
         var baseConfig = new FlameConfig
         {
-            Width = 140, Height = 140, IterationCount = 200_000, Threads = 1, Seed = 11,
+            Width = 140,
+            Height = 140,
+            IterationCount = 200_000,
+            Threads = 1,
+            Seed = 11,
             Functions = new() { new TransformationFunction("swirl", 1) },
-            AffineParams = new() { new AffineParams(0.8, 0, 1.2, 0, 0.8, 2.2), new AffineParams(1.2,0,3.4,0,1.2,1.0) },
+            AffineParams = new() { new AffineParams(0.8, 0, 1.2, 0, 0.8, 2.2), new AffineParams(1.2, 0, 3.4, 0, 1.2, 1.0) },
             SymmetryLevel = 1,
             GammaCorrection = false,
             Gamma = 2.2

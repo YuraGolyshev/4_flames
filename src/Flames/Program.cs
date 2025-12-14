@@ -21,18 +21,18 @@ public static class Program
         try
         {
             var rootCommand = new RootCommand("Генерация фрактального пламени");
-            var widthOption = new Option<int>(new[] {"--width", "-w"}, ()=>1920, "Ширина изображения");
-            var heightOption = new Option<int>(new[] {"--height", "-h"}, ()=>1080, "Высота изображения");
-            var seedOption = new Option<double>("--seed", ()=>5, "Seed генератора");
-            var iterOption = new Option<int>(new[] {"--iteration-count", "-i"}, ()=>2500,"Число итераций");
-            var threadsOption = new Option<int>(new[] {"--threads", "-t"}, ()=>1, "Кол-во потоков");
-            var outOption = new Option<string>(new[] {"--output-path", "-o"}, ()=>"result.png", "Путь PNG");
-            var affOption = new Option<string>(new[]{"--affine-params","-ap"},"Список аффинных преобразований");
-            var funOption = new Option<string>(new[]{"--functions","-f"},"Список трансформаций");
-            var configOption = new Option<string>("--config","Путь к JSON-конфигу");
-            var gammaCorrOption = new Option<bool>(new[]{"--gamma-correction","-g"},"Включить гамма-коррекцию");
-            var gammaOption = new Option<double>("--gamma",()=>2.2, "Значение гаммы");
-            var symmetryOption = new Option<int>(new[]{"--symmetry-level","-s"},()=>1,"Кол-во симметрий");
+            var widthOption = new Option<int>(new[] { "--width", "-w" }, () => 1920, "Ширина изображения");
+            var heightOption = new Option<int>(new[] { "--height", "-h" }, () => 1080, "Высота изображения");
+            var seedOption = new Option<double>("--seed", () => 5, "Seed генератора");
+            var iterOption = new Option<int>(new[] { "--iteration-count", "-i" }, () => 2500, "Число итераций");
+            var threadsOption = new Option<int>(new[] { "--threads", "-t" }, () => 1, "Кол-во потоков");
+            var outOption = new Option<string>(new[] { "--output-path", "-o" }, () => "result.png", "Путь PNG");
+            var affOption = new Option<string>(new[] { "--affine-params", "-ap" }, "Список аффинных преобразований");
+            var funOption = new Option<string>(new[] { "--functions", "-f" }, "Список трансформаций");
+            var configOption = new Option<string>("--config", "Путь к JSON-конфигу");
+            var gammaCorrOption = new Option<bool>(new[] { "--gamma-correction", "-g" }, "Включить гамма-коррекцию");
+            var gammaOption = new Option<double>("--gamma", () => 2.2, "Значение гаммы");
+            var symmetryOption = new Option<int>(new[] { "--symmetry-level", "-s" }, () => 1, "Кол-во симметрий");
 
             rootCommand.AddOption(widthOption);
             rootCommand.AddOption(heightOption);
@@ -63,10 +63,10 @@ public static class Program
                 bool gammaCorrVal = parseResult.GetValueForOption(gammaCorrOption);
                 double gammaVal = parseResult.GetValueForOption(gammaOption);
                 int symmetryVal = parseResult.GetValueForOption(symmetryOption);
-                
+
                 // Проверяем, был ли указан --gamma-correction в командной строке
                 bool gammaCorrectionSpecified = parseResult.Tokens.Any(t => t.Value == "--gamma-correction" || t.Value == "-g");
-                
+
                 // Определяем, какие параметры были указаны явно (отличаются от дефолтов или не null для строк)
                 int? width = (widthVal != 1920) ? widthVal : null;
                 int? height = (heightVal != 1080) ? heightVal : null;
@@ -84,7 +84,7 @@ public static class Program
                     var config = LoadConfig(width, height, seed, iterationCount, threads, output, affineParams, functions, configPath, gammaCorrection, gamma, symmetryLevel);
                     ValidateConfig(config);
                     Logger.Info($"Parameters loaded. width={config.Width}, height={config.Height}, iters={config.IterationCount}, threads={config.Threads}");
-                    
+
                     byte[] rgb;
                     if (config.Threads > 1)
                     {
@@ -96,16 +96,17 @@ public static class Program
                         var renderer = new FlameRenderer(config);
                         rgb = renderer.Render();
                     }
-                    
+
                     PngWriter.SaveRgbImage(config.OutputPath, config.Width, config.Height, rgb);
                     Logger.Info($"PNG saved to {config.OutputPath}");
-                } catch (Exception ex) { Logger.Error(ex.Message); }
+                }
+                catch (Exception ex) { Logger.Error(ex.Message); }
             });
             return rootCommand.Invoke(args);
         }
         catch (Exception ex)
         {
-            Logger.Error(ex.Message+"\n"+ex.StackTrace);
+            Logger.Error(ex.Message + "\n" + ex.StackTrace);
             return 1;
         }
     }
@@ -121,39 +122,48 @@ public static class Program
             config = JsonSerializer.Deserialize<FlameConfig>(fileJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
         }
         // CLI > JSON > дефолты (перезаписываем только если параметр был явно указан в CLI)
-        if (width.HasValue) {
+        if (width.HasValue)
+        {
             config.Width = width.Value;
         }
-        if (height.HasValue) {
+        if (height.HasValue)
+        {
             config.Height = height.Value;
         }
-        if (seed.HasValue) {
+        if (seed.HasValue)
+        {
             config.Seed = seed.Value;
         }
-        if (iter.HasValue) {
+        if (iter.HasValue)
+        {
             config.IterationCount = iter.Value;
         }
-        if (threads.HasValue) {
+        if (threads.HasValue)
+        {
             config.Threads = threads.Value;
         }
-        if (!string.IsNullOrWhiteSpace(output)) {
+        if (!string.IsNullOrWhiteSpace(output))
+        {
             config.OutputPath = output;
         }
-        if (gammaCorr.HasValue) {
+        if (gammaCorr.HasValue)
+        {
             config.GammaCorrection = gammaCorr.Value;
         }
-        if (gamma.HasValue) {
+        if (gamma.HasValue)
+        {
             config.Gamma = gamma.Value;
         }
-        if (symmetry.HasValue) {
+        if (symmetry.HasValue)
+        {
             config.SymmetryLevel = symmetry.Value;
         }
         if (!string.IsNullOrWhiteSpace(affStr))
-            {
+        {
             config.AffineParams = ParseAffineParams(affStr);
         }
         if (!string.IsNullOrWhiteSpace(funStr))
-            {
+        {
             config.Functions = ParseFunctions(funStr);
         }
         return config;
@@ -166,7 +176,8 @@ public static class Program
         foreach (var p in parts)
         {
             var arr = p.Split(',');
-            if (arr.Length != 6) {
+            if (arr.Length != 6)
+            {
                 throw new FormatException("Ошибка формата affine-параметров: требуется 6 чисел через запятую");
             }
             list.Add(new AffineParams(
@@ -188,7 +199,8 @@ public static class Program
         foreach (var fn in fns)
         {
             var split = fn.Split(':');
-            if (split.Length != 2) {
+            if (split.Length != 2)
+            {
                 throw new FormatException("Неверный формат функции (ожидалось <name>:<weight>)");
             }
             res.Add(new TransformationFunction(split[0], double.Parse(split[1], CultureInfo.InvariantCulture)));
@@ -198,22 +210,28 @@ public static class Program
     /// <summary>Проверяет консистентность/валидность всех параметров.</summary>
     public static void ValidateConfig(FlameConfig conf)
     {
-        if (conf.Width <= 0 || conf.Height <= 0) {
+        if (conf.Width <= 0 || conf.Height <= 0)
+        {
             throw new ArgumentException("Размер изображения должен быть больше 0");
         }
-        if (conf.IterationCount <= 0) {
+        if (conf.IterationCount <= 0)
+        {
             throw new ArgumentException("Число итераций должно быть больше 0");
         }
-        if (conf.Threads <= 0) {
+        if (conf.Threads <= 0)
+        {
             throw new ArgumentException("Число потоков должно быть больше 0");
         }
-        if (conf.SymmetryLevel < 1) {
+        if (conf.SymmetryLevel < 1)
+        {
             throw new ArgumentException("SymmetryLevel >= 1");
         }
-        if (conf.Functions.Count == 0) {
+        if (conf.Functions.Count == 0)
+        {
             throw new ArgumentException("Должна быть указана хотя бы одна функция трансформации");
         }
-        if (conf.AffineParams.Count == 0) {
+        if (conf.AffineParams.Count == 0)
+        {
             throw new ArgumentException("Должна быть указана хотя бы одна аффинная матрица");
         }
     }
