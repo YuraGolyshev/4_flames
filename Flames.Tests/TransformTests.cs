@@ -48,3 +48,4 @@ public class TransformTests
         Assert.False(double.IsNaN(y));
     }
 }
+

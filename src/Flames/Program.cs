@@ -1,6 +1,7 @@
 ﻿// See https://aka.ms/new-console-template for more information
 using System.CommandLine;
 using System.Globalization;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Flames.Models;
@@ -48,18 +49,36 @@ public static class Program
 
             rootCommand.SetHandler((context) =>
             {
-                int width = context.ParseResult.GetValueForOption(widthOption);
-                int height = context.ParseResult.GetValueForOption(heightOption);
-                double seed = context.ParseResult.GetValueForOption(seedOption);
-                int iterationCount = context.ParseResult.GetValueForOption(iterOption);
-                int threads = context.ParseResult.GetValueForOption(threadsOption);
-                string output = context.ParseResult.GetValueForOption(outOption);
-                string affineParams = context.ParseResult.GetValueForOption(affOption);
-                string functions = context.ParseResult.GetValueForOption(funOption);
-                string configPath = context.ParseResult.GetValueForOption(configOption);
-                bool gammaCorrection = context.ParseResult.GetValueForOption(gammaCorrOption);
-                double gamma = context.ParseResult.GetValueForOption(gammaOption);
-                int symmetryLevel = context.ParseResult.GetValueForOption(symmetryOption);
+                var parseResult = context.ParseResult;
+                // Получаем значения и сравниваем с дефолтами, чтобы определить, были ли они указаны явно
+                int widthVal = parseResult.GetValueForOption(widthOption);
+                int heightVal = parseResult.GetValueForOption(heightOption);
+                double seedVal = parseResult.GetValueForOption(seedOption);
+                int iterVal = parseResult.GetValueForOption(iterOption);
+                int threadsVal = parseResult.GetValueForOption(threadsOption);
+                string outputVal = parseResult.GetValueForOption(outOption);
+                string affineParamsVal = parseResult.GetValueForOption(affOption);
+                string functionsVal = parseResult.GetValueForOption(funOption);
+                string configPath = parseResult.GetValueForOption(configOption);
+                bool gammaCorrVal = parseResult.GetValueForOption(gammaCorrOption);
+                double gammaVal = parseResult.GetValueForOption(gammaOption);
+                int symmetryVal = parseResult.GetValueForOption(symmetryOption);
+                
+                // Проверяем, был ли указан --gamma-correction в командной строке
+                bool gammaCorrectionSpecified = parseResult.Tokens.Any(t => t.Value == "--gamma-correction" || t.Value == "-g");
+                
+                // Определяем, какие параметры были указаны явно (отличаются от дефолтов или не null для строк)
+                int? width = (widthVal != 1920) ? widthVal : null;
+                int? height = (heightVal != 1080) ? heightVal : null;
+                double? seed = (seedVal != 5.0) ? seedVal : null;
+                int? iterationCount = (iterVal != 2500) ? iterVal : null;
+                int? threads = (threadsVal != 1) ? threadsVal : null;
+                string output = (!string.IsNullOrWhiteSpace(outputVal) && outputVal != "result.png") ? outputVal : null;
+                string affineParams = !string.IsNullOrWhiteSpace(affineParamsVal) ? affineParamsVal : null;
+                string functions = !string.IsNullOrWhiteSpace(functionsVal) ? functionsVal : null;
+                bool? gammaCorrection = gammaCorrectionSpecified ? (bool?)gammaCorrVal : null;
+                double? gamma = (gammaVal != 2.2) ? gammaVal : null;
+                int? symmetryLevel = (symmetryVal != 1) ? symmetryVal : null;
                 try
                 {
                     var config = LoadConfig(width, height, seed, iterationCount, threads, output, affineParams, functions, configPath, gammaCorrection, gamma, symmetryLevel);
@@ -93,7 +112,7 @@ public static class Program
     /// <summary>
     /// Собирает итоговый конфиг из параметров CLI, JSON или дефолтов
     /// </summary>
-    public static FlameConfig LoadConfig(int width, int height, double seed, int iter, int threads, string output, string affStr, string funStr, string configPath, bool gammaCorr, double gamma, int symmetry)
+    public static FlameConfig LoadConfig(int? width, int? height, double? seed, int? iter, int? threads, string output, string affStr, string funStr, string configPath, bool? gammaCorr, double? gamma, int? symmetry)
     {
         FlameConfig config = new FlameConfig();
         if (!string.IsNullOrWhiteSpace(configPath) && File.Exists(configPath))
@@ -101,16 +120,16 @@ public static class Program
             var fileJson = File.ReadAllText(configPath);
             config = JsonSerializer.Deserialize<FlameConfig>(fileJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
         }
-        // CLI > JSON > дефолты
-        config.Width = width;
-        config.Height = height;
-        config.Seed = seed;
-        config.IterationCount = iter;
-        config.Threads = threads;
-        config.OutputPath = output;
-        config.GammaCorrection = gammaCorr;
-        config.Gamma = gamma;
-        config.SymmetryLevel = symmetry;
+        // CLI > JSON > дефолты (перезаписываем только если параметр был явно указан в CLI)
+        if (width.HasValue) config.Width = width.Value;
+        if (height.HasValue) config.Height = height.Value;
+        if (seed.HasValue) config.Seed = seed.Value;
+        if (iter.HasValue) config.IterationCount = iter.Value;
+        if (threads.HasValue) config.Threads = threads.Value;
+        if (!string.IsNullOrWhiteSpace(output)) config.OutputPath = output;
+        if (gammaCorr.HasValue) config.GammaCorrection = gammaCorr.Value;
+        if (gamma.HasValue) config.Gamma = gamma.Value;
+        if (symmetry.HasValue) config.SymmetryLevel = symmetry.Value;
         if (!string.IsNullOrWhiteSpace(affStr))
             config.AffineParams = ParseAffineParams(affStr);
         if (!string.IsNullOrWhiteSpace(funStr))
