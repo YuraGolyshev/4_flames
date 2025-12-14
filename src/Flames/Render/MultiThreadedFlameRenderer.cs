@@ -96,7 +96,9 @@ public class MultiThreadedFlameRenderer
                     if ((i - startIter + 1) % Math.Max(1, (endIter - startIter) / 20) == 0)
                     {
                         int current = Interlocked.Increment(ref completed);
-                        if (current % (n / 100) == 0) Logger.Progress(current, n);
+                        if (current % (n / 100) == 0) {
+                            Logger.Progress(current, n);
+                        }
                     }
                 }
 
@@ -104,7 +106,9 @@ public class MultiThreadedFlameRenderer
                 lock (lockObj)
                 {
                     for (int i = 0; i < localBuf.Length; i++)
+                    {
                         globalBuf[i] += localBuf[i];
+                    }
                 }
             });
         }
@@ -121,7 +125,12 @@ public class MultiThreadedFlameRenderer
     {
         double r = rand.NextDouble() * sum;
         for (int i = 0; i < acc.Count; i++)
-            if (r < acc[i]) return i;
+        {
+            if (r < acc[i]) {
+                return i;
+            }
+        }
+
         return acc.Count - 1;
     }
 
@@ -159,7 +168,12 @@ public class MultiThreadedFlameRenderer
     private byte[] NormalizeToRgb(double[] buf, int w, int h)
     {
         double max = 1;
-        foreach (var c in buf) if (c > max) max = c;
+        foreach (var c in buf)
+        {
+            if (c > max) {
+                max = c;
+            }
+        }
 
         double logMax = Math.Log(max + 1);
         var arr = new byte[w * h * 3];

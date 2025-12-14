@@ -23,7 +23,11 @@ public static class Logger
         {
             int percent = (int)(current * 100.0 / total);
             // Проверяем, доступна ли консоль (для тестов)
-            if (Console.IsOutputRedirected) return;
+            if (Console.IsOutputRedirected)
+            {
+                return;
+            }
+
             Console.CursorLeft = 0;
             Console.Write($"[PROGRESS] {percent,3}% ({current}/{total})");
         }

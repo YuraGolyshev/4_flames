@@ -121,19 +121,41 @@ public static class Program
             config = JsonSerializer.Deserialize<FlameConfig>(fileJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
         }
         // CLI > JSON > дефолты (перезаписываем только если параметр был явно указан в CLI)
-        if (width.HasValue) config.Width = width.Value;
-        if (height.HasValue) config.Height = height.Value;
-        if (seed.HasValue) config.Seed = seed.Value;
-        if (iter.HasValue) config.IterationCount = iter.Value;
-        if (threads.HasValue) config.Threads = threads.Value;
-        if (!string.IsNullOrWhiteSpace(output)) config.OutputPath = output;
-        if (gammaCorr.HasValue) config.GammaCorrection = gammaCorr.Value;
-        if (gamma.HasValue) config.Gamma = gamma.Value;
-        if (symmetry.HasValue) config.SymmetryLevel = symmetry.Value;
+        if (width.HasValue) {
+            config.Width = width.Value;
+        }
+        if (height.HasValue) {
+            config.Height = height.Value;
+        }
+        if (seed.HasValue) {
+            config.Seed = seed.Value;
+        }
+        if (iter.HasValue) {
+            config.IterationCount = iter.Value;
+        }
+        if (threads.HasValue) {
+            config.Threads = threads.Value;
+        }
+        if (!string.IsNullOrWhiteSpace(output)) {
+            config.OutputPath = output;
+        }
+        if (gammaCorr.HasValue) {
+            config.GammaCorrection = gammaCorr.Value;
+        }
+        if (gamma.HasValue) {
+            config.Gamma = gamma.Value;
+        }
+        if (symmetry.HasValue) {
+            config.SymmetryLevel = symmetry.Value;
+        }
         if (!string.IsNullOrWhiteSpace(affStr))
+            {
             config.AffineParams = ParseAffineParams(affStr);
+        }
         if (!string.IsNullOrWhiteSpace(funStr))
+            {
             config.Functions = ParseFunctions(funStr);
+        }
         return config;
     }
     /// <summary>Парсит строку с affine-параметрами (по 6 чисел через /)</summary>
@@ -144,7 +166,9 @@ public static class Program
         foreach (var p in parts)
         {
             var arr = p.Split(',');
-            if (arr.Length != 6) throw new FormatException("Ошибка формата affine-параметров: требуется 6 чисел через запятую");
+            if (arr.Length != 6) {
+                throw new FormatException("Ошибка формата affine-параметров: требуется 6 чисел через запятую");
+            }
             list.Add(new AffineParams(
                 double.Parse(arr[0], CultureInfo.InvariantCulture),
                 double.Parse(arr[1], CultureInfo.InvariantCulture),
@@ -164,7 +188,9 @@ public static class Program
         foreach (var fn in fns)
         {
             var split = fn.Split(':');
-            if (split.Length != 2) throw new FormatException("Неверный формат функции (ожидалось <name>:<weight>)");
+            if (split.Length != 2) {
+                throw new FormatException("Неверный формат функции (ожидалось <name>:<weight>)");
+            }
             res.Add(new TransformationFunction(split[0], double.Parse(split[1], CultureInfo.InvariantCulture)));
         }
         return res;
@@ -172,11 +198,23 @@ public static class Program
     /// <summary>Проверяет консистентность/валидность всех параметров.</summary>
     public static void ValidateConfig(FlameConfig conf)
     {
-        if (conf.Width <= 0 || conf.Height <= 0) throw new ArgumentException("Размер изображения должен быть больше 0");
-        if (conf.IterationCount <= 0) throw new ArgumentException("Число итераций должно быть больше 0");
-        if (conf.Threads <= 0) throw new ArgumentException("Число потоков должно быть больше 0");
-        if (conf.SymmetryLevel < 1) throw new ArgumentException("SymmetryLevel >= 1");
-        if (conf.Functions.Count == 0) throw new ArgumentException("Должна быть указана хотя бы одна функция трансформации");
-        if (conf.AffineParams.Count == 0) throw new ArgumentException("Должна быть указана хотя бы одна аффинная матрица");
+        if (conf.Width <= 0 || conf.Height <= 0) {
+            throw new ArgumentException("Размер изображения должен быть больше 0");
+        }
+        if (conf.IterationCount <= 0) {
+            throw new ArgumentException("Число итераций должно быть больше 0");
+        }
+        if (conf.Threads <= 0) {
+            throw new ArgumentException("Число потоков должно быть больше 0");
+        }
+        if (conf.SymmetryLevel < 1) {
+            throw new ArgumentException("SymmetryLevel >= 1");
+        }
+        if (conf.Functions.Count == 0) {
+            throw new ArgumentException("Должна быть указана хотя бы одна функция трансформации");
+        }
+        if (conf.AffineParams.Count == 0) {
+            throw new ArgumentException("Должна быть указана хотя бы одна аффинная матрица");
+        }
     }
 }

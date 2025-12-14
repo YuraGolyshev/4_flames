@@ -74,7 +74,10 @@ public class FlameRenderer
                     buf[idxBuf + 2] += color.b;
                 }
             }
-            if ((i+1) % Math.Max(1, n/100) == 0) Logger.Progress(i+1, n);
+            if ((i+1) % Math.Max(1, n/100) == 0)
+            {
+                Logger.Progress(i+1, n);
+            }
         }
         Logger.Progress(n, n); Console.WriteLine();
         // Преобразуем буфер double => byte
@@ -85,7 +88,13 @@ public class FlameRenderer
     {
         double r = rand.NextDouble() * sum;
         for (int i = 0; i < acc.Count; i++)
-            if (r < acc[i]) return i;
+        {
+            if (r < acc[i])
+            {
+                return i;
+            }
+        }
+
         return acc.Count-1;
     }
 
@@ -123,7 +132,14 @@ public class FlameRenderer
     private byte[] NormalizeToRgb(double[] buf, int w, int h)
     {
         double max = 1;
-        foreach(var c in buf) if(c>max) max=c;
+        foreach (var c in buf)
+        {
+            if (c > max)
+            {
+                max = c;
+            }
+        }
+
         double logMax = Math.Log(max + 1);
         var arr = new byte[w * h * 3];
         for (int i = 0; i < buf.Length; i++)

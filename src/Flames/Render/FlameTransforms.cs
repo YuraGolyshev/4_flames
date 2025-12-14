@@ -20,7 +20,11 @@ public static class FlameTransforms
     public static (double, double) Horseshoe(double x, double y)
     {
         double r = System.Math.Sqrt(x * x + y * y);
-        if (r < 1e-10) return (0, 0);
+        if (r < 1e-10)
+        {
+            return (0, 0);
+        }
+
         return (
             ((x - y) * (x + y) / r) * 0.5,
             (2 * x * y / r) * 0.5
@@ -30,7 +34,11 @@ public static class FlameTransforms
     public static (double, double) Spherical(double x, double y)
     {
         double r2 = x * x + y * y;
-        if (r2 < 1e-10) return (0, 0);
+        if (r2 < 1e-10)
+        {
+            return (0, 0);
+        }
+
         return (x / r2, y / r2);
     }
     /// <summary>Sinusoidal: поэлементный sin(x), sin(y)</summary>
