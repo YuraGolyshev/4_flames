@@ -113,59 +113,89 @@ public static class Program
     /// <summary>
     /// Собирает итоговый конфиг из параметров CLI, JSON или дефолтов
     /// </summary>
-    public static FlameConfig LoadConfig(int? width, int? height, double? seed, int? iter, int? threads, string output, string affStr, string funStr, string configPath, bool? gammaCorr, double? gamma, int? symmetry)
+    public static FlameConfig LoadConfig(int? width, int? height, double? seed, int? iter, int? threads,
+    string output, string affStr, string funStr, string configPath, bool? gammaCorr,
+    double? gamma, int? symmetry)
     {
         FlameConfig config = new FlameConfig();
         if (!string.IsNullOrWhiteSpace(configPath) && File.Exists(configPath))
         {
             var fileJson = File.ReadAllText(configPath);
-            config = JsonSerializer.Deserialize<FlameConfig>(fileJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
+            config = JsonSerializer.Deserialize<FlameConfig>(fileJson,
+                new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
         }
+
         // CLI > JSON > дефолты (перезаписываем только если параметр был явно указан в CLI)
         if (width.HasValue)
         {
             config.Width = width.Value;
         }
+
         if (height.HasValue)
         {
             config.Height = height.Value;
         }
+
         if (seed.HasValue)
         {
             config.Seed = seed.Value;
         }
+
         if (iter.HasValue)
         {
             config.IterationCount = iter.Value;
         }
+
         if (threads.HasValue)
         {
             config.Threads = threads.Value;
         }
+
         if (!string.IsNullOrWhiteSpace(output))
         {
             config.OutputPath = output;
         }
+
         if (gammaCorr.HasValue)
         {
             config.GammaCorrection = gammaCorr.Value;
         }
+
         if (gamma.HasValue)
         {
             config.Gamma = gamma.Value;
         }
+
         if (symmetry.HasValue)
         {
             config.SymmetryLevel = symmetry.Value;
         }
+
         if (!string.IsNullOrWhiteSpace(affStr))
         {
             config.AffineParams = ParseAffineParams(affStr);
         }
+
         if (!string.IsNullOrWhiteSpace(funStr))
         {
             config.Functions = ParseFunctions(funStr);
         }
+
+        // Добавляем дефолтные значения, если списки пустые
+        if (config.Functions.Count == 0)
+        {
+            config.Functions.Add(new TransformationFunction("linear", 1.0));
+        }
+
+        if (config.AffineParams.Count == 0)
+        {
+            // Дефолтное аффинное преобразование (единичная матрица со смещением)
+            config.AffineParams.Add(new AffineParams(
+                0.8, -0.2, 0.1,
+                0.2, 0.8, -0.1
+            ));
+        }
+
         return config;
     }
     /// <summary>Парсит строку с affine-параметрами (по 6 чисел через /)</summary>
