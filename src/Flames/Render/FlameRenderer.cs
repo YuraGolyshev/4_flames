@@ -26,9 +26,7 @@ public class FlameRenderer
         int w = config.Width, h = config.Height, n = config.IterationCount;
         var buf = new double[w * h * 3]; // Для накопления цвета
         double xmin = -4.0, xmax = 4.0, ymin = -4.0, ymax = 4.0;
-        var weights = new List<double>();
-        double sum = 0;
-        foreach (var f in config.Functions) { sum += f.Weight; weights.Add(sum); }
+        var (weights, sum) = FlameRenderCore.PrepareWeights(config.Functions);
         // Используем общий core-рендер
         FlameRenderCore.RenderCore(buf, config, weights, sum, rand, xmin, xmax, ymin, ymax, 0, n, (cur, total) => Logger.Progress(cur, n));
         Logger.Progress(n, n); Console.WriteLine();

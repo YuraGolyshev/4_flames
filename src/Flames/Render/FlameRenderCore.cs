@@ -72,6 +72,22 @@ public static class FlameRenderCore
         }
     }
 
+    /// <summary>
+    /// Готовит кумулятивные веса для трансформационных функций.
+    /// Возвращает список кумулятивных весов (для PickFunction) и сумму весов.
+    /// </summary>
+    public static (List<double> weights, double sum) PrepareWeights(List<TransformationFunction> functions)
+    {
+        var weights = new List<double>();
+        double sum = 0;
+        foreach (var f in functions)
+        {
+            sum += f.Weight;
+            weights.Add(sum);
+        }
+        return (weights, sum);
+    }
+
     private static int PickFunction(List<double> acc, double sum, Random rand)
     {
         double r = rand.NextDouble() * sum;
@@ -117,4 +133,3 @@ public static class FlameRenderCore
         };
     }
 }
-

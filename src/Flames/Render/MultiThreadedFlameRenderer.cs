@@ -27,9 +27,7 @@ public class MultiThreadedFlameRenderer
         int w = config.Width, h = config.Height, n = config.IterationCount;
         int threads = Math.Max(1, config.Threads);
         double xmin = -4.0, xmax = 4.0, ymin = -4.0, ymax = 4.0;
-        var weights = new List<double>();
-        double sum = 0;
-        foreach (var f in config.Functions) { sum += f.Weight; weights.Add(sum); }
+        var (weights, sum) = FlameRenderCore.PrepareWeights(config.Functions);
         var globalBuf = new double[w * h * 3];
         var lockObj = new object();
         int completed = 0;
