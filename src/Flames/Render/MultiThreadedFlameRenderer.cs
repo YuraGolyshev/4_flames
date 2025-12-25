@@ -27,24 +27,19 @@ public class MultiThreadedFlameRenderer
         int w = config.Width, h = config.Height, n = config.IterationCount;
         int threads = Math.Max(1, config.Threads);
         double xmin = -4.0, xmax = 4.0, ymin = -4.0, ymax = 4.0;
-
-        // Подготовка весов для функций
         var weights = new List<double>();
         double sum = 0;
         foreach (var f in config.Functions) { sum += f.Weight; weights.Add(sum); }
-
-        // Общий буфер для результата
         var globalBuf = new double[w * h * 3];
         var lockObj = new object();
         int completed = 0;
 
-        // Разделяем работу между потоками
-        int iterationsPerThread = n / threads;
-        int remainder = n % threads;
-
         Logger.Info($"Starting multithreaded generation with {threads} threads");
 
         var tasks = new Task[threads];
+        int iterationsPerThread = n / threads;
+        int remainder = n % threads;
+
         for (int t = 0; t < threads; t++)
         {
             int threadId = t;
@@ -56,54 +51,14 @@ public class MultiThreadedFlameRenderer
             {
                 var localBuf = new double[w * h * 3];
                 var localRand = new Random(seed);
-                double x = 0, y = 0;
-
-                for (int i = startIter; i < endIter; i++)
+                FlameRenderCore.RenderCore(localBuf, config, weights, sum, localRand, xmin, xmax, ymin, ymax, startIter, endIter, (cur, total) =>
                 {
-                    int idx = PickFunction(weights, sum, localRand);
-                    int affIdx = localRand.Next(config.AffineParams.Count);
-                    var aff = config.AffineParams[affIdx];
-                    (x, y) = ApplyAffine(x, y, aff);
-                    (x, y) = ApplyTransform(x, y, config.Functions[idx].Name);
-
-                    if (double.IsNaN(x) || double.IsInfinity(x) || double.IsNaN(y) || double.IsInfinity(y))
+                    int prog = Interlocked.Increment(ref completed);
+                    if (prog % (n / 100) == 0)
                     {
-                        x = 0; y = 0;
-                        continue;
+                        Logger.Progress(prog, n);
                     }
-                    x = Math.Max(-10, Math.Min(10, x));
-                    y = Math.Max(-10, Math.Min(10, y));
-
-                    int symLevels = Math.Max(1, config.SymmetryLevel);
-                    for (int s = 0; s < symLevels; s++)
-                    {
-                        double angle = 2 * Math.PI * s / symLevels;
-                        double xx = x * Math.Cos(angle) - y * Math.Sin(angle);
-                        double yy = x * Math.Sin(angle) + y * Math.Cos(angle);
-
-                        int px = (int)((xx - xmin) / (xmax - xmin) * (w - 1));
-                        int py = (int)((ymax - yy) / (ymax - ymin) * (h - 1));
-                        if (px >= 0 && px < w && py >= 0 && py < h)
-                        {
-                            var color = FunctionColor(idx, config.Functions.Count);
-                            int idxBuf = (py * w + px) * 3;
-                            localBuf[idxBuf + 0] += color.r;
-                            localBuf[idxBuf + 1] += color.g;
-                            localBuf[idxBuf + 2] += color.b;
-                        }
-                    }
-
-                    if ((i - startIter + 1) % Math.Max(1, (endIter - startIter) / 20) == 0)
-                    {
-                        int current = Interlocked.Increment(ref completed);
-                        if (current % (n / 100) == 0)
-                        {
-                            Logger.Progress(current, n);
-                        }
-                    }
-                }
-
-                // Объединяем локальный буфер с глобальным
+                });
                 lock (lockObj)
                 {
                     for (int i = 0; i < localBuf.Length; i++)
@@ -118,7 +73,6 @@ public class MultiThreadedFlameRenderer
         Logger.Progress(n, n);
         Console.WriteLine();
         Logger.Info($"Multithreaded generation completed");
-
         return NormalizeToRgb(globalBuf, w, h);
     }
 

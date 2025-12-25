@@ -25,62 +25,13 @@ public class FlameRenderer
     {
         int w = config.Width, h = config.Height, n = config.IterationCount;
         var buf = new double[w * h * 3]; // Для накопления цвета
-        // Расширенный диапазон координат для лучшего заполнения (адаптивный)
         double xmin = -4.0, xmax = 4.0, ymin = -4.0, ymax = 4.0;
-
-        // Сгенерируем кумулятивный массив весов для трансформаций
         var weights = new List<double>();
         double sum = 0;
         foreach (var f in config.Functions) { sum += f.Weight; weights.Add(sum); }
-        // Стартовая точка
-        double x = 0, y = 0;
-        for (int i = 0; i < n; i++)
-        {
-            // Выбор функции по весам
-            int idx = PickFunction(weights, sum);
-            // Выбираем случайное аффинное преобразование (независимо от функции)
-            int affIdx = rand.Next(config.AffineParams.Count);
-            var aff = config.AffineParams[affIdx];
-            (x, y) = ApplyAffine(x, y, aff);
-            (x, y) = ApplyTransform(x, y, config.Functions[idx].Name);
-
-            // Защита от NaN и Infinity
-            if (double.IsNaN(x) || double.IsInfinity(x) || double.IsNaN(y) || double.IsInfinity(y))
-            {
-                x = 0; y = 0;
-                continue;
-            }
-            // Ограничиваем координаты разумными пределами
-            x = Math.Max(-10, Math.Min(10, x));
-            y = Math.Max(-10, Math.Min(10, y));
-
-            int symLevels = Math.Max(1, config.SymmetryLevel);
-            for (int s = 0; s < symLevels; s++)
-            {
-                double angle = 2 * Math.PI * s / symLevels;
-                double xx = x * Math.Cos(angle) - y * Math.Sin(angle);
-                double yy = x * Math.Sin(angle) + y * Math.Cos(angle);
-
-                // Приводим к экрану
-                int px = (int)((xx - xmin) / (xmax - xmin) * (w - 1));
-                int py = (int)((ymax - yy) / (ymax - ymin) * (h - 1)); // важен ymax - y, иначе перевёрнуто
-                if (px >= 0 && px < w && py >= 0 && py < h)
-                {
-                    // Цвет: индекс функции задаёт градиент (можно усложнить до colormap)
-                    var color = FunctionColor(idx, config.Functions.Count);
-                    int idxBuf = (py * w + px) * 3;
-                    buf[idxBuf + 0] += color.r;
-                    buf[idxBuf + 1] += color.g;
-                    buf[idxBuf + 2] += color.b;
-                }
-            }
-            if ((i + 1) % Math.Max(1, n / 100) == 0)
-            {
-                Logger.Progress(i + 1, n);
-            }
-        }
+        // Используем общий core-рендер
+        FlameRenderCore.RenderCore(buf, config, weights, sum, rand, xmin, xmax, ymin, ymax, 0, n, (cur, total) => Logger.Progress(cur, n));
         Logger.Progress(n, n); Console.WriteLine();
-        // Преобразуем буфер double => byte
         return NormalizeToRgb(buf, w, h);
     }
 
