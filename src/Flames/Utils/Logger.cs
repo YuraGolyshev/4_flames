@@ -5,18 +5,17 @@ namespace Flames.Utils;
 
 /// <summary>
 /// Гибкий логгер для записи в консоль и/или файл, не статический.
-/// Выбор output меняется через конструктор (или статический Logger.Instance для простого глобального доступа).
 /// </summary>
 public class Logger
 {
+    private const int PROGRESS_PERCENT_TOTAL = 100; // Максимальный процент прогресса
     private readonly TextWriter outWriter;
     private readonly bool useColor;
     private readonly object sync = new();
 
-    /// <summary>Стандартный консольный логгер с цветом</summary>
+    /// <summary>Стандартный глобальный логгер (по умолчанию — консоль)</summary>
     public static Logger Instance { get; set; } = new Logger(Console.Out, useColor: true);
 
-    /// <summary>Создать логгер, пишущий в поток (например, файл или консоль)</summary>
     public Logger(TextWriter writer, bool useColor = false)
     {
         outWriter = writer;
@@ -29,7 +28,7 @@ public class Logger
 
     private void WriteColored(string prefix, ConsoleColor color, string msg)
     {
-        lock (sync) // важен для многопоточности + корректного цвета
+        lock (sync)
         {
             if (useColor)
             {
@@ -48,13 +47,11 @@ public class Logger
         }
     }
 
-    /// <summary>Логгирует прогресс выполнения (только для консоли)</summary>
     public void Progress(int current, int total)
     {
         try
         {
-            int percent = (int)(current * 100.0 / total);
-            // Проверяем, можно ли писать в консоль
+            int percent = (int)(current * PROGRESS_PERCENT_TOTAL / (double)total);
             if (outWriter != Console.Out || Console.IsOutputRedirected)
             {
                 return;
@@ -66,6 +63,6 @@ public class Logger
                 Console.Write($"[PROGRESS] {percent,3}% ({current}/{total})");
             }
         }
-        catch { /* Игнорируем для тестов/файлов */ }
+        catch { }
     }
 }

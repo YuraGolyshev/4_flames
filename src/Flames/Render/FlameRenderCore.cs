@@ -5,12 +5,16 @@ using Flames.Models;
 namespace Flames.Render;
 
 /// <summary>
-/// Общая core-реализация вычисления набора итераций фрактального пламени: может использоваться и для single-thread, и для multi-thread
+/// Общая core-реализация расчёта фрактального пламени
 /// </summary>
 public static class FlameRenderCore
 {
+    private const double COORD_LIMIT = 10.0;        // Ограничение области для выбросов x/y
+    private const int PROGRESS_LOG_DIV = 20;        // Логировать прогресс каждые 5% итераций (n/20)
+    private const double COLOR_RING = 6.0;          // Для расчёта цветов спектра (6 цветов)
+
     /// <summary>
-    /// Вычисляет точки и накапливает значения цвета в переданный буфер buf
+    /// Основной цикл итераций рендера
     /// </summary>
     public static void RenderCore(
         double[] buf,
@@ -42,8 +46,8 @@ public static class FlameRenderCore
                 x = 0; y = 0;
                 continue;
             }
-            x = Math.Max(-10, Math.Min(10, x));
-            y = Math.Max(-10, Math.Min(10, y));
+            x = Math.Max(-COORD_LIMIT, Math.Min(COORD_LIMIT, x));
+            y = Math.Max(-COORD_LIMIT, Math.Min(COORD_LIMIT, y));
             int symLevels = Math.Max(1, config.SymmetryLevel);
             for (int s = 0; s < symLevels; s++)
             {
@@ -61,7 +65,7 @@ public static class FlameRenderCore
                     buf[idxBuf + 2] += color.b;
                 }
             }
-            if (progressCb != null && (iter + 1) % Math.Max(1, n / 20) == 0)
+            if (progressCb != null && (iter + 1) % Math.Max(1, n / PROGRESS_LOG_DIV) == 0)
             {
                 progressCb(startIter + iter + 1, startIter + n);
             }
@@ -98,7 +102,6 @@ public static class FlameRenderCore
                 return i;
             }
         }
-
         return acc.Count - 1;
     }
 
@@ -119,7 +122,7 @@ public static class FlameRenderCore
 
     private static (double r, double g, double b) FunctionColor(int i, int total)
     {
-        double hue = (double)i / total * 6.0;
+        double hue = (double)i / total * COLOR_RING;
         int sector = (int)hue;
         double frac = hue - sector;
         return sector switch
@@ -132,4 +135,10 @@ public static class FlameRenderCore
             _ => (1.0, 0.0, 1.0 - frac)
         };
     }
+    public const double DEFAULT_XMIN = -4.0;
+    public const double DEFAULT_XMAX = 4.0;
+    public const double DEFAULT_YMIN = -4.0;
+    public const double DEFAULT_YMAX = 4.0;
+
+
 }

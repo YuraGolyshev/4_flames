@@ -13,43 +13,39 @@ namespace Flames.Render;
 public class MultiThreadedFlameRenderer
 {
     private readonly FlameConfig config;
+    // Координаты/границы вынесены в константы
+    private const double XMIN = FlameRenderCore.DEFAULT_XMIN;
+    private const double XMAX = FlameRenderCore.DEFAULT_XMAX;
+    private const double YMIN = FlameRenderCore.DEFAULT_YMIN;
+    private const double YMAX = FlameRenderCore.DEFAULT_YMAX;
 
     public MultiThreadedFlameRenderer(FlameConfig cfg)
     {
         config = cfg;
     }
-
-    /// <summary>
-    /// Генерирует финальное RGB-изображение с использованием N потоков.
-    /// </summary>
     public byte[] Render()
     {
         int w = config.Width, h = config.Height, n = config.IterationCount;
         int threads = Math.Max(1, config.Threads);
-        double xmin = -4.0, xmax = 4.0, ymin = -4.0, ymax = 4.0;
         var (weights, sum) = FlameRenderCore.PrepareWeights(config.Functions);
         var globalBuf = new double[w * h * 3];
         var lockObj = new object();
         int completed = 0;
-
         Logger.Instance.Info($"Starting multithreaded generation with {threads} threads");
-
         var tasks = new Task[threads];
         int iterationsPerThread = n / threads;
         int remainder = n % threads;
-
         for (int t = 0; t < threads; t++)
         {
             int threadId = t;
             int startIter = t * iterationsPerThread;
             int endIter = startIter + iterationsPerThread + (threadId == threads - 1 ? remainder : 0);
             int seed = (int)(config.Seed + threadId);
-
             tasks[t] = Task.Run(() =>
             {
                 var localBuf = new double[w * h * 3];
                 var localRand = new Random(seed);
-                FlameRenderCore.RenderCore(localBuf, config, weights, sum, localRand, xmin, xmax, ymin, ymax, startIter, endIter, (cur, total) =>
+                FlameRenderCore.RenderCore(localBuf, config, weights, sum, localRand, XMIN, XMAX, YMIN, YMAX, startIter, endIter, (cur, total) =>
                 {
                     int prog = Interlocked.Increment(ref completed);
                     if (prog % (n / 100) == 0)
@@ -66,59 +62,12 @@ public class MultiThreadedFlameRenderer
                 }
             });
         }
-
         Task.WaitAll(tasks);
         Logger.Instance.Progress(n, n);
         Console.WriteLine();
         Logger.Instance.Info($"Multithreaded generation completed");
         return NormalizeToRgb(globalBuf, w, h);
     }
-
-    private int PickFunction(List<double> acc, double sum, Random rand)
-    {
-        double r = rand.NextDouble() * sum;
-        for (int i = 0; i < acc.Count; i++)
-        {
-            if (r < acc[i])
-            {
-                return i;
-            }
-        }
-
-        return acc.Count - 1;
-    }
-
-    private (double, double) ApplyAffine(double x, double y, AffineParams t)
-        => (t.A * x + t.B * y + t.C, t.D * x + t.E * y + t.F);
-
-    private (double, double) ApplyTransform(double x, double y, string name)
-        => name.ToLower() switch
-        {
-            "linear" => FlameTransforms.Linear(x, y),
-            "swirl" => FlameTransforms.Swirl(x, y),
-            "horseshoe" => FlameTransforms.Horseshoe(x, y),
-            "spherical" => FlameTransforms.Spherical(x, y),
-            "sinusoidal" => FlameTransforms.Sinusoidal(x, y),
-            "polar" => FlameTransforms.Polar(x, y),
-            _ => FlameTransforms.Linear(x, y)
-        };
-
-    private (double r, double g, double b) FunctionColor(int i, int total)
-    {
-        double hue = (double)i / total * 6.0;
-        int sector = (int)hue;
-        double frac = hue - sector;
-        return sector switch
-        {
-            0 => (1.0, frac, 0.0),
-            1 => (1.0 - frac, 1.0, 0.0),
-            2 => (0.0, 1.0, frac),
-            3 => (0.0, 1.0 - frac, 1.0),
-            4 => (frac, 0.0, 1.0),
-            _ => (1.0, 0.0, 1.0 - frac)
-        };
-    }
-
     private byte[] NormalizeToRgb(double[] buf, int w, int h)
     {
         double max = 1;
@@ -129,7 +78,6 @@ public class MultiThreadedFlameRenderer
                 max = c;
             }
         }
-
         double logMax = Math.Log(max + 1);
         var arr = new byte[w * h * 3];
         for (int i = 0; i < buf.Length; i++)
@@ -137,7 +85,7 @@ public class MultiThreadedFlameRenderer
             double normalized = Math.Log(buf[i] + 1) / logMax;
             if (config.GammaCorrection)
             {
-                double gamma = config.Gamma > 0 ? config.Gamma : 2.2;
+                double gamma = config.Gamma > 0 ? config.Gamma : FlameConfig.DEFAULT_GAMMA;
                 normalized = Math.Pow(normalized, 1.0 / gamma);
             }
             arr[i] = (byte)Math.Min(255, (int)(normalized * 255));
@@ -145,4 +93,3 @@ public class MultiThreadedFlameRenderer
         return arr;
     }
 }
-
