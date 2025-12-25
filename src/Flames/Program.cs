@@ -50,38 +50,24 @@ public static class Program
             rootCommand.SetHandler((context) =>
             {
                 var parseResult = context.ParseResult;
-                // Получаем значения и сравниваем с дефолтами, чтобы определить, были ли они указаны явно
-                int widthVal = parseResult.GetValueForOption(widthOption);
-                int heightVal = parseResult.GetValueForOption(heightOption);
-                double seedVal = parseResult.GetValueForOption(seedOption);
-                int iterVal = parseResult.GetValueForOption(iterOption);
-                int threadsVal = parseResult.GetValueForOption(threadsOption);
-                string outputVal = parseResult.GetValueForOption(outOption);
-                string affineParamsVal = parseResult.GetValueForOption(affOption);
-                string functionsVal = parseResult.GetValueForOption(funOption);
-                string configPath = parseResult.GetValueForOption(configOption);
-                bool gammaCorrVal = parseResult.GetValueForOption(gammaCorrOption);
-                double gammaVal = parseResult.GetValueForOption(gammaOption);
-                int symmetryVal = parseResult.GetValueForOption(symmetryOption);
-
-                // Проверяем, был ли указан --gamma-correction в командной строке
-                bool gammaCorrectionSpecified = parseResult.Tokens.Any(t => t.Value == "--gamma-correction" || t.Value == "-g");
-
-                // Определяем, какие параметры были указаны явно (отличаются от дефолтов или не null для строк)
-                int? width = (widthVal != 1920) ? widthVal : null;
-                int? height = (heightVal != 1080) ? heightVal : null;
-                double? seed = (seedVal != 5.0) ? seedVal : null;
-                int? iterationCount = (iterVal != 2500) ? iterVal : null;
-                int? threads = (threadsVal != 1) ? threadsVal : null;
-                string output = (!string.IsNullOrWhiteSpace(outputVal) && outputVal != "result.png") ? outputVal : null;
-                string affineParams = !string.IsNullOrWhiteSpace(affineParamsVal) ? affineParamsVal : null;
-                string functions = !string.IsNullOrWhiteSpace(functionsVal) ? functionsVal : null;
-                bool? gammaCorrection = gammaCorrectionSpecified ? (bool?)gammaCorrVal : null;
-                double? gamma = (gammaVal != 2.2) ? gammaVal : null;
-                int? symmetryLevel = (symmetryVal != 1) ? symmetryVal : null;
                 try
                 {
-                    var config = LoadConfig(width, height, seed, iterationCount, threads, output, affineParams, functions, configPath, gammaCorrection, gamma, symmetryLevel);
+                    // Весь парсинг входных параметров полностью вынесен в объект конфигурации
+                    var config = FlameConfig.FromParseResult(
+                        parseResult,
+                        widthOption,
+                        heightOption,
+                        seedOption,
+                        iterOption,
+                        threadsOption,
+                        outOption,
+                        affOption,
+                        funOption,
+                        configOption,
+                        gammaCorrOption,
+                        gammaOption,
+                        symmetryOption
+                    );
                     ValidateConfig(config);
                     Logger.Instance.Info($"Parameters loaded. width={config.Width}, height={config.Height}, iters={config.IterationCount}, threads={config.Threads}");
 
