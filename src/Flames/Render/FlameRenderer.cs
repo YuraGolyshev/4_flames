@@ -28,8 +28,8 @@ public class FlameRenderer
         double xmin = -4.0, xmax = 4.0, ymin = -4.0, ymax = 4.0;
         var (weights, sum) = FlameRenderCore.PrepareWeights(config.Functions);
         // Используем общий core-рендер
-        FlameRenderCore.RenderCore(buf, config, weights, sum, rand, xmin, xmax, ymin, ymax, 0, n, (cur, total) => Logger.Progress(cur, n));
-        Logger.Progress(n, n); Console.WriteLine();
+        FlameRenderCore.RenderCore(buf, config, weights, sum, rand, xmin, xmax, ymin, ymax, 0, n, (cur, total) => Logger.Instance.Progress(cur, n));
+        Logger.Instance.Progress(n, n); Console.WriteLine();
         return NormalizeToRgb(buf, w, h);
     }
 

@@ -32,7 +32,7 @@ public class MultiThreadedFlameRenderer
         var lockObj = new object();
         int completed = 0;
 
-        Logger.Info($"Starting multithreaded generation with {threads} threads");
+        Logger.Instance.Info($"Starting multithreaded generation with {threads} threads");
 
         var tasks = new Task[threads];
         int iterationsPerThread = n / threads;
@@ -54,7 +54,7 @@ public class MultiThreadedFlameRenderer
                     int prog = Interlocked.Increment(ref completed);
                     if (prog % (n / 100) == 0)
                     {
-                        Logger.Progress(prog, n);
+                        Logger.Instance.Progress(prog, n);
                     }
                 });
                 lock (lockObj)
@@ -68,9 +68,9 @@ public class MultiThreadedFlameRenderer
         }
 
         Task.WaitAll(tasks);
-        Logger.Progress(n, n);
+        Logger.Instance.Progress(n, n);
         Console.WriteLine();
-        Logger.Info($"Multithreaded generation completed");
+        Logger.Instance.Info($"Multithreaded generation completed");
         return NormalizeToRgb(globalBuf, w, h);
     }
 

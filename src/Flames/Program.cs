@@ -83,7 +83,7 @@ public static class Program
                 {
                     var config = LoadConfig(width, height, seed, iterationCount, threads, output, affineParams, functions, configPath, gammaCorrection, gamma, symmetryLevel);
                     ValidateConfig(config);
-                    Logger.Info($"Parameters loaded. width={config.Width}, height={config.Height}, iters={config.IterationCount}, threads={config.Threads}");
+                    Logger.Instance.Info($"Parameters loaded. width={config.Width}, height={config.Height}, iters={config.IterationCount}, threads={config.Threads}");
 
                     byte[] rgb;
                     if (config.Threads > 1)
@@ -98,15 +98,15 @@ public static class Program
                     }
 
                     PngWriter.SaveRgbImage(config.OutputPath, config.Width, config.Height, rgb);
-                    Logger.Info($"PNG saved to {config.OutputPath}");
+                    Logger.Instance.Info($"PNG saved to {config.OutputPath}");
                 }
-                catch (Exception ex) { Logger.Error(ex.Message); }
+                catch (Exception ex) { Logger.Instance.Error(ex.Message); }
             });
             return rootCommand.Invoke(args);
         }
         catch (Exception ex)
         {
-            Logger.Error(ex.Message + "\n" + ex.StackTrace);
+            Logger.Instance.Error(ex.Message + "\n" + ex.StackTrace);
             return 1;
         }
     }
