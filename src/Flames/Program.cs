@@ -1,5 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-using System.CommandLine;
+﻿using System.CommandLine;
 using System.Globalization;
 using System.Linq;
 using System.Text.Json;
@@ -15,6 +14,7 @@ namespace Flames;
 /// </summary>
 public static class Program
 {
+    // Весь парсинг/валидация вынесены во FlameConfigLoader, Program теперь только точка входа
     /// <summary>Главная точка входа. Парсит параметры CLI/JSON, управляет рендером и PNG-выходом.</summary>
     public static int Main(string[] args)
     {
@@ -52,36 +52,29 @@ public static class Program
                 var parseResult = context.ParseResult;
                 try
                 {
-                    // Весь парсинг входных параметров полностью вынесен в объект конфигурации
-                    var config = FlameConfig.FromParseResult(
-                        parseResult,
-                        widthOption,
-                        heightOption,
-                        seedOption,
-                        iterOption,
-                        threadsOption,
-                        outOption,
-                        affOption,
-                        funOption,
-                        configOption,
-                        gammaCorrOption,
-                        gammaOption,
-                        symmetryOption
-                    );
-                    ValidateConfig(config);
+                    var config = Flames.FlameConfigLoader.LoadFromArgsOrJson(
+    parseResult,
+    widthOption,
+    heightOption,
+    seedOption,
+    iterOption,
+    threadsOption,
+    outOption,
+    affOption,
+    funOption,
+    configOption,
+    gammaCorrOption,
+    gammaOption,
+    symmetryOption
+);
+                    Flames.FlameConfigLoader.Validate(config);
                     Logger.Instance.Info($"Parameters loaded. width={config.Width}, height={config.Height}, iters={config.IterationCount}, threads={config.Threads}");
 
                     byte[] rgb;
-                    if (config.Threads > 1)
-                    {
-                        var multiRenderer = new MultiThreadedFlameRenderer(config);
-                        rgb = multiRenderer.Render();
-                    }
-                    else
-                    {
-                        var renderer = new FlameRenderer(config);
-                        rgb = renderer.Render();
-                    }
+                    IFlameRenderer renderer = (config.Threads > 1)
+                        ? new MultiThreadedFlameRenderer(config)
+                        : new SingleThreadedFlameRenderer(config);
+                    rgb = renderer.Render();
 
                     PngWriter.SaveRgbImage(config.OutputPath, config.Width, config.Height, rgb);
                     Logger.Instance.Info($"PNG saved to {config.OutputPath}");
@@ -99,156 +92,7 @@ public static class Program
     /// <summary>
     /// Собирает итоговый конфиг из параметров CLI, JSON или дефолтов
     /// </summary>
-    public static FlameConfig LoadConfig(int? width, int? height, double? seed, int? iter, int? threads,
-    string output, string affStr, string funStr, string configPath, bool? gammaCorr,
-    double? gamma, int? symmetry)
-    {
-        FlameConfig config = new FlameConfig();
-        if (!string.IsNullOrWhiteSpace(configPath) && File.Exists(configPath))
-        {
-            var fileJson = File.ReadAllText(configPath);
-            config = JsonSerializer.Deserialize<FlameConfig>(fileJson,
-                new JsonSerializerOptions { PropertyNameCaseInsensitive = true })!;
-        }
-
-        // CLI > JSON > дефолты (перезаписываем только если параметр был явно указан в CLI)
-        if (width.HasValue)
-        {
-            config.Width = width.Value;
-        }
-
-        if (height.HasValue)
-        {
-            config.Height = height.Value;
-        }
-
-        if (seed.HasValue)
-        {
-            config.Seed = seed.Value;
-        }
-
-        if (iter.HasValue)
-        {
-            config.IterationCount = iter.Value;
-        }
-
-        if (threads.HasValue)
-        {
-            config.Threads = threads.Value;
-        }
-
-        if (!string.IsNullOrWhiteSpace(output))
-        {
-            config.OutputPath = output;
-        }
-
-        if (gammaCorr.HasValue)
-        {
-            config.GammaCorrection = gammaCorr.Value;
-        }
-
-        if (gamma.HasValue)
-        {
-            config.Gamma = gamma.Value;
-        }
-
-        if (symmetry.HasValue)
-        {
-            config.SymmetryLevel = symmetry.Value;
-        }
-
-        if (!string.IsNullOrWhiteSpace(affStr))
-        {
-            config.AffineParams = ParseAffineParams(affStr);
-        }
-
-        if (!string.IsNullOrWhiteSpace(funStr))
-        {
-            config.Functions = ParseFunctions(funStr);
-        }
-
-        // Добавляем дефолтные значения, если списки пустые
-        if (config.Functions.Count == 0)
-        {
-            config.Functions.Add(new TransformationFunction("linear", 1.0));
-        }
-
-        if (config.AffineParams.Count == 0)
-        {
-            // Дефолтное аффинное преобразование (единичная матрица со смещением)
-            config.AffineParams.Add(new AffineParams(
-                0.8, -0.2, 0.1,
-                0.2, 0.8, -0.1
-            ));
-        }
-
-        return config;
-    }
     /// <summary>Парсит строку с affine-параметрами (по 6 чисел через /)</summary>
-    public static List<AffineParams> ParseAffineParams(string s)
-    {
-        var list = new List<AffineParams>();
-        var parts = s.Split('/');
-        foreach (var p in parts)
-        {
-            var arr = p.Split(',');
-            if (arr.Length != 6)
-            {
-                throw new FormatException("Ошибка формата affine-параметров: требуется 6 чисел через запятую");
-            }
-            list.Add(new AffineParams(
-                double.Parse(arr[0], CultureInfo.InvariantCulture),
-                double.Parse(arr[1], CultureInfo.InvariantCulture),
-                double.Parse(arr[2], CultureInfo.InvariantCulture),
-                double.Parse(arr[3], CultureInfo.InvariantCulture),
-                double.Parse(arr[4], CultureInfo.InvariantCulture),
-                double.Parse(arr[5], CultureInfo.InvariantCulture)
-            ));
-        }
-        return list;
-    }
     /// <summary>Парсит функции трансформации вида "name:weight,name:weight..."</summary>
-    public static List<TransformationFunction> ParseFunctions(string s)
-    {
-        var res = new List<TransformationFunction>();
-        var fns = s.Split(',');
-        foreach (var fn in fns)
-        {
-            var split = fn.Split(':');
-            if (split.Length != 2)
-            {
-                throw new FormatException("Неверный формат функции (ожидалось <name>:<weight>)");
-            }
-            res.Add(new TransformationFunction(split[0], double.Parse(split[1], CultureInfo.InvariantCulture)));
-        }
-        return res;
-    }
     /// <summary>Проверяет консистентность/валидность всех параметров.</summary>
-    public static void ValidateConfig(FlameConfig conf)
-    {
-        if (conf.Width <= 0 || conf.Height <= 0)
-        {
-            throw new ArgumentException("Размер изображения должен быть больше 0");
-        }
-        if (conf.IterationCount <= 0)
-        {
-            throw new ArgumentException("Число итераций должно быть больше 0");
-        }
-        if (conf.Threads <= 0)
-        {
-            throw new ArgumentException("Число потоков должно быть больше 0");
-        }
-        if (conf.SymmetryLevel < 1)
-        {
-            throw new ArgumentException("SymmetryLevel >= 1");
-        }
-        if (conf.Functions.Count == 0)
-        {
-            throw new ArgumentException("Должна быть указана хотя бы одна функция трансформации");
-        }
-        if (conf.AffineParams.Count == 0)
-        {
-            throw new ArgumentException("Должна быть указана хотя бы одна аффинная матрица");
-        }
-    }
 }

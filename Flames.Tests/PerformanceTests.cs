@@ -35,7 +35,7 @@ public class PerformanceTests
     public void SingleThreaded_Render_Completes()
     {
         var config = CreateTestConfig(1, 50000);
-        var renderer = new FlameRenderer(config);
+        var renderer = new SingleThreadedFlameRenderer(config);
         var sw = Stopwatch.StartNew();
         var result = renderer.Render();
         sw.Stop();
@@ -66,7 +66,7 @@ public class PerformanceTests
         var singleConfig = CreateTestConfig(1, iterations);
         var multiConfig = CreateTestConfig(4, iterations);
 
-        var singleRenderer = new FlameRenderer(singleConfig);
+        var singleRenderer = new SingleThreadedFlameRenderer(singleConfig);
         var multiRenderer = new MultiThreadedFlameRenderer(multiConfig);
 
         Console.WriteLine("\n=== Single vs Multi-threaded Comparison ===");
@@ -99,7 +99,7 @@ public class PerformanceTests
         var config4 = CreateTestConfig(4, iterations);
         var config8 = CreateTestConfig(8, iterations);
 
-        var renderer1 = new FlameRenderer(config1);
+        var renderer1 = new SingleThreadedFlameRenderer(config1);
         var renderer2 = new MultiThreadedFlameRenderer(config2);
         var renderer4 = new MultiThreadedFlameRenderer(config4);
         var renderer8 = new MultiThreadedFlameRenderer(config8);
@@ -132,7 +132,7 @@ public class PerformanceTests
 
             if (threads == 1)
             {
-                var renderer = new FlameRenderer(config);
+                var renderer = new SingleThreadedFlameRenderer(config);
                 renderer.Render();
             }
             else
@@ -158,4 +158,3 @@ public class PerformanceTests
         }
     }
 }
-

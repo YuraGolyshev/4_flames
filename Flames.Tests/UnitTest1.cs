@@ -10,7 +10,7 @@ public class ConfigTests
     public void ParseAffineParams_ValidStr_Works()
     {
         var str = "1,2,3,4,5,6/0.1,0.2,0.3,0.4,0.5,0.6";
-        var list = Program.ParseAffineParams(str);
+        var list = Flames.AffineParamsParser.Parse(str);
         Assert.Equal(2, list.Count);
         Assert.Equal(1, list[0].A);
         Assert.Equal(0.4, list[1].D);
@@ -19,13 +19,13 @@ public class ConfigTests
     [Fact]
     public void ParseAffineParams_InvalidStr_Fails()
     {
-        Assert.Throws<FormatException>(() => Program.ParseAffineParams("1,2,3,4,5"));
+        Assert.Throws<FormatException>(() => Flames.AffineParamsParser.Parse("1,2,3,4,5"));
     }
 
     [Fact]
     public void ParseFunctions_ValidStr_Works()
     {
-        var f = Program.ParseFunctions("swirl:1.0,horseshoe:0.8");
+        var f = Flames.TransformationFunctionParser.Parse("swirl:1.0,horseshoe:0.8");
         Assert.Equal(2, f.Count);
         Assert.Equal("swirl", f[0].Name);
         Assert.Equal(0.8, f[1].Weight);
@@ -34,7 +34,7 @@ public class ConfigTests
     [Fact]
     public void ParseFunctions_InvalidStr_Fails()
     {
-        Assert.Throws<FormatException>(() => Program.ParseFunctions("swirl"));
+        Assert.Throws<FormatException>(() => Flames.TransformationFunctionParser.Parse("swirl"));
     }
 
     [Fact]
@@ -72,24 +72,24 @@ public class ConfigTests
             AffineParams = new() { new AffineParams(1, 2, 3, 4, 5, 6) },
             SymmetryLevel = 1
         };
-        Program.ValidateConfig(c);
+        FlameConfigLoader.Validate(c);
     }
 
     [Fact]
     public void Validation_BadParams_Throws()
     {
         var bad = new FlameConfig();
-        Assert.Throws<ArgumentException>(() => Program.ValidateConfig(bad));
+        Assert.Throws<ArgumentException>(() => FlameConfigLoader.Validate(bad));
         bad.Width = 100; bad.Height = 100; bad.IterationCount = 10; bad.Threads = 1;
         bad.Functions = new(); bad.AffineParams = new(); bad.SymmetryLevel = 1;
-        Assert.Throws<ArgumentException>(() => Program.ValidateConfig(bad));
+        Assert.Throws<ArgumentException>(() => FlameConfigLoader.Validate(bad));
         bad.Functions = new() { new TransformationFunction("swirl", 1) };
-        Assert.Throws<ArgumentException>(() => Program.ValidateConfig(bad));
+        Assert.Throws<ArgumentException>(() => FlameConfigLoader.Validate(bad));
         bad.AffineParams = new() { new AffineParams(1, 1, 1, 1, 1, 1) };
         bad.Threads = 0;
-        Assert.Throws<ArgumentException>(() => Program.ValidateConfig(bad));
+        Assert.Throws<ArgumentException>(() => FlameConfigLoader.Validate(bad));
         bad.Threads = 1; bad.SymmetryLevel = 0;
-        Assert.Throws<ArgumentException>(() => Program.ValidateConfig(bad));
+        Assert.Throws<ArgumentException>(() => FlameConfigLoader.Validate(bad));
     }
 
     [Fact]
@@ -103,7 +103,7 @@ public class ConfigTests
             Threads = 1,
             Seed = 8,
             Functions = new() { new TransformationFunction("swirl", 1) },
-            // affine с сдвигом
+            // affine с сдвигом
             AffineParams = new() { new AffineParams(0.8, 0, 0.4, 0, 0.8, 0.2) },
             SymmetryLevel = 1,
             GammaCorrection = false
@@ -120,8 +120,8 @@ public class ConfigTests
             SymmetryLevel = 6, // для наглядности
             GammaCorrection = false
         };
-        var pixels1 = new Flames.Render.FlameRenderer(config1).Render();
-        var pixels4 = new Flames.Render.FlameRenderer(config4).Render();
+        var pixels1 = new Flames.Render.SingleThreadedFlameRenderer(config1).Render();
+        var pixels4 = new Flames.Render.SingleThreadedFlameRenderer(config4).Render();
         // хотя бы один пиксель не ноль
         Assert.Contains(pixels1, v => v != 0);
         Assert.Contains(pixels4, v => v != 0);
@@ -158,11 +158,10 @@ public class ConfigTests
             GammaCorrection = true,
             Gamma = 0.7
         };
-        var img1 = new Flames.Render.FlameRenderer(baseConfig).Render();
-        var img2 = new Flames.Render.FlameRenderer(gammaConfig).Render();
+        var img1 = new Flames.Render.SingleThreadedFlameRenderer(baseConfig).Render();
+        var img2 = new Flames.Render.SingleThreadedFlameRenderer(gammaConfig).Render();
         Assert.Contains(img1, v => v != 0);
         Assert.Contains(img2, v => v != 0);
         Assert.NotEqual(img1, img2);
     }
 }
-
